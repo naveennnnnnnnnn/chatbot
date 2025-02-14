@@ -80,26 +80,43 @@ HTML_PAGE = """
     </script>
 </body>
 </html>
-
 """
 
-@app.route("/chat", methods=["GET", "POST"])  # Allow both GET and POST
+@app.route("/")
+def home():
+    return render_template_string(HTML_PAGE)
+
+@app.route("/chat", methods=["POST"])
 def chat():
-    if request.method == "GET":
-        return "Welcome to NAFON AI! Use a POST request to chat."
-    
-    user_message = request.json.get("message", "")
+    user_message = request.json.get("message", "").strip()
 
-    response = requests.post(
-        url="https://openrouter.ai/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "Content-Type": "application/json"
-        },
-        data=json.dumps({
-            "model": "openai/gpt-4o",
-            "messages": [{"role": "user", "content": user_message}]
-        })
-    )
+    if not user_message:
+        return jsonify({"response": "Please enter a message."})
 
-    return jsonify(response.json())
+    try:
+        response = requests.post(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            data=json.dumps({
+                "model": "openai/gpt-4o",
+                "messages": [{"role": "user", "content": user_message}]
+            })
+        )
+
+        api_response = response.json()
+
+        if response.status_code == 200 and "choices" in api_response:
+            ai_reply = api_response["choices"][0]["message"]["content"]
+        else:
+            ai_reply = "Error processing the response."
+
+    except Exception as e:
+        ai_reply = f"Request failed: {str(e)}"
+
+    return jsonify({"response": ai_reply})
+
+if __name__ == "__main__":
+    app.run(debug=True)
