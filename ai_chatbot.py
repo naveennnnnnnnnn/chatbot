@@ -83,37 +83,23 @@ HTML_PAGE = """
 
 """
 
-@app.route("/")
-def home():
-    return render_template_string(HTML_PAGE)
-
-@app.route("/chat", methods=["POST"])
+@app.route("/chat", methods=["GET", "POST"])  # Allow both GET and POST
 def chat():
-    data = request.json
-    user_message = data.get("message", "")
+    if request.method == "GET":
+        return "Welcome to NAFON AI! Use a POST request to chat."
+    
+    user_message = request.json.get("message", "")
 
-    if not user_message:
-        return jsonify({"error": "No message provided"}), 400
+    response = requests.post(
+        url="https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        data=json.dumps({
+            "model": "openai/gpt-4o",
+            "messages": [{"role": "user", "content": user_message}]
+        })
+    )
 
-    try:
-        response = requests.post(
-            url="https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            data=json.dumps({
-                "model": "openai/gpt-4o",
-                "messages": [{"role": "user", "content": user_message}],
-                "max_tokens": 100
-            })
-        )
-
-        ai_response = response.json()
-        return jsonify({"response": ai_response["choices"][0]["message"]["content"]})
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    return jsonify(response.json())
