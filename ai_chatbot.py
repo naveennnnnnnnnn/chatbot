@@ -80,11 +80,12 @@ HTML_PAGE = """
     </script>
 </body>
 </html>
+
 """
 
 @app.route("/")
 def home():
-    return render_template_string(HTML_PAGE)
+    return HTML_PAGE
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -107,11 +108,12 @@ def chat():
         )
 
         api_response = response.json()
+        print("DEBUG API Response:", api_response)  # Print full API response for debugging
 
         if response.status_code == 200 and "choices" in api_response:
             ai_reply = api_response["choices"][0]["message"]["content"]
         else:
-            ai_reply = "Error processing the response."
+            ai_reply = api_response.get("error", {}).get("message", "Unexpected API response.")
 
     except Exception as e:
         ai_reply = f"Request failed: {str(e)}"
